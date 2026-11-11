@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace 必须与 Mapper 接口全限定名一致 -->
+<mapper namespace="com.ecommerce.mapper.ProductMapper">
+
+    <!-- 结果映射：数据库下划线字段 -> 实体驼峰属性 -->
+    <resultMap id="productResultMap" type="com.ecommerce.entity.Product">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="price" property="price"/>
+        <result column="stock" property="stock"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="description" property="description"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <!-- 公共查询列 -->
+    <sql id="baseColumns">
+        id, name, price, stock, category_id, image_url, description, status, create_time
+    </sql>
+
+    <!-- 任务3：新增商品，useGeneratedKeys 回填自增主键 -->
+    <insert id="insert" parameterType="com.ecommerce.entity.Product"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_product (name, price, stock, category_id, image_url, description, status, create_time)
+        VALUES (#{name}, #{price}, #{stock}, #{categoryId}, #{imageUrl}, #{description}, #{status}, #{createTime})
+    </insert>
+
+    <!-- 任务3：按主键查询 -->
+    <select id="selectById" resultMap="productResultMap">
+        SELECT <include refid="baseColumns"/>
+        FROM t_product
+        WHERE id = #{id}
+    </select>
+
+    <!-- 任务3：查询全部上架商品 -->
+    <select id="selectAll" resultMap="productResultMap">
+        SELECT <include refid="baseColumns"/>
+        FROM t_product
+        WHERE status = 1
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 任务3：修改商品信息，动态更新非空字段 -->
+    <update id="update" parameterType="com.ecommerce.entity.Product">
+        UPDATE t_product
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="imageUrl != null">image_url = #{imageUrl},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 任务3：按主键删除 -->
+    <delete id="deleteById">
+        DELETE FROM t_product WHERE id = #{id}
+    </delete>
+
+    <!-- 任务4：动态条件多条件查询，<where> 自动去除多余的 AND -->
+    <select id="search" resultMap="productResultMap">
+        SELECT <include refid="baseColumns"/>
+        FROM t_product
+        <where>
+            <!-- 固定条件：仅查询上架商品 -->
+            status = 1
+            <if test="keyword != null and keyword != ''">
+                AND name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="categoryId != null">
+                AND category_id = #{categoryId}
+            </if>
+            <if test="minPrice != null">
+                AND price &gt;= #{minPrice}
+            </if>
+            <if test="maxPrice != null">
+                AND price &lt;= #{maxPrice}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 任务5（选做）：批量插入，foreach 拼接多行 VALUES -->
+    <insert id="insertBatch" parameterType="java.util.List"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_product (name, price, stock, category_id, image_url, description, status, create_time)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.name}, #{item.price}, #{item.stock}, #{item.categoryId}, #{item.imageUrl},
+             #{item.description}, #{item.status}, #{item.createTime})
+        </foreach>
+    </insert>
+
+    <!-- 任务5（选做）：按主键集合批量删除，foreach 拼接 IN 列表 -->
+    <delete id="deleteBatchIds">
+        DELETE FROM t_product
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+    </delete>
+
+    <!-- 任务5（选做）：choose/when/otherwise 实现排序方式切换 -->
+    <select id="searchWithOrder" resultMap="productResultMap">
+        SELECT <include refid="baseColumns"/>
+        FROM t_product
+        WHERE status = 1
+        <choose>
+            <when test="orderType == 'price_asc'">
+                ORDER BY price ASC
+            </when>
+            <when test="orderType == 'price_desc'">
+                ORDER BY price DESC
+            </when>
+            <otherwise>
+                ORDER BY create_time DESC
+            </otherwise>
+        </choose>
+    </select>
+
+</mapper>
