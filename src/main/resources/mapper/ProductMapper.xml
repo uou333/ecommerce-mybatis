@@ -25,8 +25,15 @@
     <!-- 任务3：新增商品，useGeneratedKeys 回填自增主键 -->
     <insert id="insert" parameterType="com.ecommerce.entity.Product"
             useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO t_product (name, price, stock, category_id, image_url, description, status, create_time)
-        VALUES (#{name}, #{price}, #{stock}, #{categoryId}, #{imageUrl}, #{description}, #{status}, #{createTime})
+        INSERT INTO t_product
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            name, price, stock, category_id, image_url, description, status,
+            <if test="createTime != null">create_time,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            #{name}, #{price}, #{stock}, #{categoryId}, #{imageUrl}, #{description}, #{status},
+            <if test="createTime != null">#{createTime},</if>
+        </trim>
     </insert>
 
     <!-- 任务3：按主键查询 -->
