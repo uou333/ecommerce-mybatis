@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商品管理模块 Demo · Spring Boot + MyBatis</title>
+<style>
+  :root{
+    --blue:#2f6fed; --blue-dark:#1f56c4; --bg:#f4f6fa; --card:#fff;
+    --line:#e3e8ef; --text:#1d2733; --muted:#6b7787; --green:#1a7f37; --red:#c0392b;
+    --radius:10px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:"Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 20px 60px;}
+  header.top{margin-bottom:20px;}
+  header.top h1{font-size:22px;font-weight:700;}
+  header.top p{color:var(--muted);font-size:13px;margin-top:6px;}
+  .note{display:inline-block;margin-top:8px;font-size:12px;color:var(--blue-dark);background:#eaf2ff;border:1px solid #cfe1ff;border-radius:6px;padding:4px 10px;}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0;}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;}
+  .stat .num{font-size:26px;font-weight:700;}
+  .stat .label{font-size:13px;color:var(--muted);margin-top:2px;}
+  .stat.up .num{color:var(--green);} .stat.down .num{color:var(--red);}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:18px;}
+  .filter{display:flex;flex-wrap:wrap;gap:12px;align-items:end;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:12px;color:var(--muted);}
+  .field input,.field select{height:38px;border:1px solid var(--line);border-radius:8px;padding:0 10px;font-size:14px;background:#fff;min-width:130px;}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--blue);}
+  .btns{display:flex;gap:10px;margin-left:auto;}
+  button{cursor:pointer;border:none;border-radius:8px;font-size:14px;padding:0 16px;height:38px;}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-primary:hover{background:var(--blue-dark);}
+  .btn-ghost{background:#fff;border:1px solid var(--line);color:var(--text);}
+  .btn-add{background:var(--green);color:#fff;}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  thead th{text-align:left;font-size:12.5px;color:var(--muted);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line);}
+  tbody td{padding:12px;border-bottom:1px solid #f0f3f7;}
+  tbody tr:hover{background:#f8fafe;}
+  .price{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600;}
+  .badge{display:inline-block;font-size:12px;padding:2px 10px;border-radius:999px;}
+  .badge.up{color:var(--green);background:#e7f5ec;}
+  .badge.down{color:var(--red);background:#fbeceb;}
+  .cat{color:var(--muted);font-size:13px;}
+  .row-actions{display:flex;gap:8px;}
+  .link-btn{background:none;color:var(--blue);font-size:13px;padding:0 4px;height:auto;}
+  .link-btn.del{color:var(--red);}
+  .empty{text-align:center;color:var(--muted);padding:40px 0;}
+
+  .mask{position:fixed;inset:0;background:rgba(20,30,45,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:20;}
+  .mask.show{display:flex;}
+  .modal{background:#fff;border-radius:14px;width:100%;max-width:460px;padding:22px;}
+  .modal h3{font-size:17px;margin-bottom:16px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .form-grid .full{grid-column:1 / -1;}
+  .modal .field input,.modal .field select,.modal .field textarea{width:100%;}
+  .modal .field textarea{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;font-family:inherit;resize:vertical;min-height:60px;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+  @media (max-width:640px){
+    .stats{grid-template-columns:1fr;}
+    .filter{flex-direction:column;align-items:stretch;}
+    .btns{margin-left:0;}
+    .form-grid{grid-template-columns:1fr;}
+    .table-scroll{overflow-x:auto;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>商品管理模块 Demo</h1>
+    <p>对应实验：基于 Spring Boot + MyBatis 的商品信息持久化与动态条件查询</p>
+    <span class="note">静态演示页 · 数据为前端内置示例，未连接真实后端与数据库</span>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="num" id="statTotal">0</div><div class="label">商品总数</div></div>
+    <div class="stat up"><div class="num" id="statUp">0</div><div class="label">上架商品</div></div>
+    <div class="stat down"><div class="num" id="statDown">0</div><div class="label">下架商品</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="filter">
+      <div class="field">
+        <label>关键词（名称）</label>
+        <input id="fKeyword" type="text" placeholder="如：手机">
+      </div>
+      <div class="field">
+        <label>分类</label>
+        <select id="fCategory">
+          <option value="">全部分类</option>
+          <option value="1">手机</option>
+          <option value="2">数码配件</option>
+          <option value="3">电脑办公</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>最低价</label>
+        <input id="fMin" type="number" min="0" placeholder="0">
+      </div>
+      <div class="field">
+        <label>最高价</label>
+        <input id="fMax" type="number" min="0" placeholder="不限">
+      </div>
+      <div class="field">
+        <label>排序</label>
+        <select id="fOrder">
+          <option value="default">默认（创建时间倒序）</option>
+          <option value="price_asc">价格从低到高</option>
+          <option value="price_desc">价格从高到低</option>
+        </select>
+      </div>
+      <div class="btns">
+        <button class="btn-ghost" id="btnReset">重置</button>
+        <button class="btn-primary" id="btnSearch">查询</button>
+        <button class="btn-add" id="btnAdd">＋ 新增商品</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>商品名称</th><th>价格</th><th>库存</th><th>分类</th><th>状态</th><th>创建时间</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="empty" style="display:none;">没有符合条件的商品</div>
+    </div>
+  </div>
+</div>
+
+<div class="mask" id="mask">
+  <div class="modal">
+    <h3 id="modalTitle">新增商品</h3>
+    <div class="form-grid">
+      <div class="field full">
+        <label>商品名称</label>
+        <input id="mName" type="text" placeholder="请输入名称">
+      </div>
+      <div class="field">
+        <label>价格（元）</label>
+        <input id="mPrice" type="number" min="0" step="0.01" placeholder="0.00">
+      </div>
+      <div class="field">
+        <label>库存</label>
+        <input id="mStock" type="number" min="0" placeholder="0">
+      </div>
+      <div class="field">
+        <label>分类</label>
+        <select id="mCategory">
+          <option value="1">手机</option>
+          <option value="2">数码配件</option>
+          <option value="3">电脑办公</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>状态</label>
+        <select id="mStatus">
+          <option value="1">上架</option>
+          <option value="0">下架</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label>描述</label>
+        <textarea id="mDesc" placeholder="商品描述（可选）"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" id="btnCancel">取消</button>
+      <button class="btn-primary" id="btnSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var CATEGORY = {1:"手机", 2:"数码配件", 3:"电脑办公"};
+var products = [
+  {id:1, name:"华为 Mate 60 手机", price:4999.00, stock:50,  categoryId:1, description:"麒麟芯片，卫星通信",     status:1, createTime:"2026-09-01 10:00:00"},
+  {id:2, name:"小米 14 手机",      price:3999.00, stock:80,  categoryId:1, description:"骁龙旗舰，徕卡影像",     status:1, createTime:"2026-09-02 11:00:00"},
+  {id:3, name:"iPhone 15",        price:5999.00, stock:30,  categoryId:1, description:"A16 芯片，灵动岛",       status:1, createTime:"2026-09-03 09:30:00"},
+  {id:4, name:"无线蓝牙耳机",      price:299.00,  stock:200, categoryId:2, description:"主动降噪，长续航",       status:1, createTime:"2026-09-04 14:20:00"},
+  {id:5, name:"机械键盘 K87",      price:349.00,  stock:120, categoryId:2, description:"青轴热插拔，RGB 背光",   status:1, createTime:"2026-09-05 16:40:00"},
+  {id:6, name:"无线鼠标",          price:129.00,  stock:150, categoryId:2, description:"轻量办公鼠标",           status:0, createTime:"2026-09-06 08:10:00"},
+  {id:7, name:"轻薄笔记本电脑",    price:6299.00, stock:20,  categoryId:3, description:"14 英寸，16G 内存",       status:1, createTime:"2026-09-07 19:00:00"},
+  {id:8, name:"平板电脑 Pro",      price:3299.00, stock:40,  categoryId:3, description:"高刷屏，触控笔支持",     status:1, createTime:"2026-09-08 20:30:00"}
+];
+var nextId = 9;
+var editingId = null;
+
+function $(id){ return document.getElementById(id); }
+function fmt(n){ return Number(n).toFixed(2); }
+
+function filterProducts(){
+  var kw = $("fKeyword").value.trim();
+  var cat = $("fCategory").value;
+  var min = $("fMin").value;
+  var max = $("fMax").value;
+  var order = $("fOrder").value;
+
+  var list = products.filter(function(p){
+    if(kw && p.name.indexOf(kw) === -1) return false;
+    if(cat && String(p.categoryId) !== cat) return false;
+    if(min !== "" && p.price < Number(min)) return false;
+    if(max !== "" && p.price > Number(max)) return false;
+    return true;
+  });
+
+  if(order === "price_asc") list.sort(function(a,b){ return a.price - b.price; });
+  else if(order === "price_desc") list.sort(function(a,b){ return b.price - a.price; });
+  else list.sort(function(a,b){ return b.createTime < a.createTime ? -1 : 1; });
+  return list;
+}
+
+function render(){
+  var list = filterProducts();
+  var tbody = $("tbody");
+  tbody.innerHTML = "";
+  $("empty").style.display = list.length ? "none" : "block";
+
+  list.forEach(function(p){
+    var tr = document.createElement("tr");
+    var badge = p.status === 1 ? '<span class="badge up">上架</span>' : '<span class="badge down">下架</span>';
+    tr.innerHTML =
+      "<td>"+p.id+"</td>" +
+      "<td>"+escapeHtml(p.name)+(p.description?'<div class="cat">'+escapeHtml(p.description)+'</div>':'')+"</td>" +
+      "<td class='price'>¥"+fmt(p.price)+"</td>" +
+      "<td>"+p.stock+"</td>" +
+      "<td class='cat'>"+CATEGORY[p.categoryId]+"</td>" +
+      "<td>"+badge+"</td>" +
+      "<td class='cat'>"+p.createTime+"</td>" +
+      "<td><div class='row-actions'>" +
+        "<button class='link-btn' data-edit='"+p.id+"'>编辑</button>" +
+        "<button class='link-btn del' data-del='"+p.id+"'>删除</button>" +
+      "</div></td>";
+    tbody.appendChild(tr);
+  });
+
+  $("statTotal").textContent = products.length;
+  $("statUp").textContent = products.filter(function(p){return p.status===1;}).length;
+  $("statDown").textContent = products.filter(function(p){return p.status===0;}).length;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+
+$("btnSearch").onclick = render;
+$("fKeyword").addEventListener("keydown", function(e){ if(e.key==="Enter") render(); });
+$("btnReset").onclick = function(){
+  $("fKeyword").value=""; $("fCategory").value=""; $("fMin").value=""; $("fMax").value=""; $("fOrder").value="default";
+  render();
+};
+
+function openModal(p){
+  editingId = p ? p.id : null;
+  $("modalTitle").textContent = p ? "编辑商品" : "新增商品";
+  $("mName").value = p ? p.name : "";
+  $("mPrice").value = p ? p.price : "";
+  $("mStock").value = p ? p.stock : "";
+  $("mCategory").value = p ? p.categoryId : 1;
+  $("mStatus").value = p ? p.status : 1;
+  $("mDesc").value = p ? (p.description||"") : "";
+  $("mask").classList.add("show");
+}
+function closeModal(){ $("mask").classList.remove("show"); }
+
+$("btnAdd").onclick = function(){ openModal(null); };
+$("btnCancel").onclick = closeModal;
+$("mask").addEventListener("click", function(e){ if(e.target === $("mask")) closeModal(); });
+
+$("btnSave").onclick = function(){
+  var name = $("mName").value.trim();
+  var price = Number($("mPrice").value);
+  var stock = Number($("mStock").value);
+  if(!name){ alert("请填写商品名称"); return; }
+  if(isNaN(price) || price < 0){ alert("价格填写不正确"); return; }
+  if(isNaN(stock) || stock < 0){ alert("库存填写不正确"); return; }
+  var data = {
+    name: name, price: price, stock: stock,
+    categoryId: Number($("mCategory").value),
+    status: Number($("mStatus").value),
+    description: $("mDesc").value.trim()
+  };
+  if(editingId === null){
+    var now = new Date();
+    var pad = function(n){ return String(n).padStart(2,"0"); };
+    data.id = nextId++;
+    data.createTime = now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate())+" "+pad(now.getHours())+":"+pad(now.getMinutes())+":"+pad(now.getSeconds());
+    products.push(data);
+  } else {
+    var p = products.find(function(x){return x.id===editingId;});
+    if(p){ Object.assign(p, data); }
+  }
+  closeModal(); render();
+};
+
+$("tbody").addEventListener("click", function(e){
+  var edit = e.target.getAttribute("data-edit");
+  var del = e.target.getAttribute("data-del");
+  if(edit){
+    var p = products.find(function(x){return x.id===Number(edit);});
+    openModal(p);
+  } else if(del){
+    var id = Number(del);
+    var p = products.find(function(x){return x.id===id;});
+    if(confirm("确认删除商品「"+p.name+"」？")){
+      products = products.filter(function(x){return x.id!==id;});
+      render();
+    }
+  }
+});
+
+render();
+</script>
+</body>
+</html>
