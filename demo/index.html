@@ -37,16 +37,25 @@
   .btn-ghost{background:#fff;border:1px solid var(--line);color:var(--text);}
   .btn-add{background:var(--green);color:#fff;}
 
-  table{width:100%;border-collapse:collapse;font-size:14px;}
-  thead th{text-align:left;font-size:12.5px;color:var(--muted);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line);}
-  tbody td{padding:12px;border-bottom:1px solid #f0f3f7;}
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{width:100%;min-width:720px;border-collapse:collapse;font-size:14px;}
+  thead th{text-align:left;font-size:12.5px;color:var(--muted);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  tbody td{padding:12px;border-bottom:1px solid #f0f3f7;vertical-align:middle;}
   tbody tr:hover{background:#f8fafe;}
-  .price{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600;}
-  .badge{display:inline-block;font-size:12px;padding:2px 10px;border-radius:999px;}
+  th:nth-child(1),td:nth-child(1){width:56px;white-space:nowrap;}
+  th:nth-child(2),td:nth-child(2){min-width:170px;}
+  th:nth-child(3),td:nth-child(3){width:90px;white-space:nowrap;}
+  th:nth-child(4),td:nth-child(4){width:70px;white-space:nowrap;}
+  th:nth-child(5),td:nth-child(5){width:96px;white-space:nowrap;}
+  th:nth-child(6),td:nth-child(6){width:76px;white-space:nowrap;}
+  th:nth-child(7),td:nth-child(7){width:150px;white-space:nowrap;}
+  th:nth-child(8),td:nth-child(8){width:104px;white-space:nowrap;}
+  .price{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:600;white-space:nowrap;}
+  .badge{display:inline-block;font-size:12px;padding:2px 10px;border-radius:999px;white-space:nowrap;}
   .badge.up{color:var(--green);background:#e7f5ec;}
   .badge.down{color:var(--red);background:#fbeceb;}
   .cat{color:var(--muted);font-size:13px;}
-  .row-actions{display:flex;gap:8px;}
+  .row-actions{display:flex;gap:8px;white-space:nowrap;}
   .link-btn{background:none;color:var(--blue);font-size:13px;padding:0 4px;height:auto;}
   .link-btn.del{color:var(--red);}
   .empty{text-align:center;color:var(--muted);padding:40px 0;}
@@ -61,9 +70,13 @@
   .modal .field textarea{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;font-family:inherit;resize:vertical;min-height:60px;}
   .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
   @media (max-width:640px){
-    .stats{grid-template-columns:1fr;}
-    .filter{flex-direction:column;align-items:stretch;}
-    .btns{margin-left:0;}
+    .wrap{padding:16px 12px 40px;}
+    .stats{grid-template-columns:1fr;gap:10px;}
+    .filter{flex-direction:column;align-items:stretch;gap:10px;}
+    .field{width:100%;}
+    .field input,.field select{min-width:0;width:100%;}
+    .btns{margin-left:0;width:100%;}
+    .btns button{flex:1;}
     .form-grid{grid-template-columns:1fr;}
     .table-scroll{overflow-x:auto;}
   }
@@ -230,7 +243,7 @@ function render(){
     var badge = p.status === 1 ? '<span class="badge up">上架</span>' : '<span class="badge down">下架</span>';
     tr.innerHTML =
       "<td>"+p.id+"</td>" +
-      "<td>"+escapeHtml(p.name)+(p.description?'<div class="cat">'+escapeHtml(p.description)+'</div>':'')+"</td>" +
+      "<td>"+escapeHtml(p.name)+(p.description?'<div class=\"cat\">'+escapeHtml(p.description)+'</div>':'')+"</td>" +
       "<td class='price'>¥"+fmt(p.price)+"</td>" +
       "<td>"+p.stock+"</td>" +
       "<td class='cat'>"+CATEGORY[p.categoryId]+"</td>" +
